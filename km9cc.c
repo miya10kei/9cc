@@ -31,7 +31,7 @@ int consume(int);
 Node *new_node(int, Node *lhs, Node *rhs);
 Node *new_node(int, Node *lhs, Node *rhs);
 Node *add(void);
-Node *num(void);
+Node *term(void);
 void gen(Node *node);
 void tokenize(char *p);
 
@@ -70,18 +70,24 @@ Node *new_node_num(int val) {
 }
 
 Node *add() {
-  Node *node = num();
+  Node *node = term();
   for(;;) {
     if (consume('+'))
-      node = new_node('+', node, num());
+      node = new_node('+', node, term());
     else if (consume('-'))
-      node = new_node('-', node, num());
+      node = new_node('-', node, term());
     else
       return node;
   }
 }
 
-Node *num() {
+Node *term() {
+  if (consume('(')) {
+    Node *node = add();
+    if (!consume(')'))
+      error("Missing closing parenthesis in open parenthesis.", tokens[pos].input);
+    return node;
+  }
   if (tokens[pos].ty == TK_NUM)
     return new_node_num(tokens[pos++].val);
   error("not numeric: %s\n", tokens[pos].input);
@@ -117,7 +123,7 @@ void tokenize(char *p) {
       continue;
     }
 
-    if (*p == '+' || *p == '-') {
+    if (*p == '+' || *p == '-' || *p == '(' || *p ==')') {
       tokens[i].ty = *p;
       tokens[i].input = p;
       i++;
