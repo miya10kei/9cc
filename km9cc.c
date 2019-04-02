@@ -1,8 +1,8 @@
 #include <ctype.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdarg.h>
 
 enum {
   TK_NUM = 256,
@@ -26,6 +26,12 @@ typedef struct Node {
   int val;
 } Node;
 
+typedef struct {
+  void **data;
+  int capacity;
+  int len;
+} Vector;
+
 void error(char *fmt, ...);
 int consume(int);
 Node *new_node(int, Node *lhs, Node *rhs);
@@ -35,6 +41,10 @@ Node *mul(void);
 Node *term(void);
 void gen(Node *node);
 void tokenize(char *p);
+Vector *new_vector();
+void vec_push(Vector *vec, void *elem);
+int expect(int, int, int);
+void runtest();
 
 Token tokens[100];
 int pos = 0;
@@ -46,6 +56,22 @@ void error(char *fmt, ...) {
   fprintf(stderr, "\n");
   va_end(ap);
   exit(1);
+}
+
+Vector *new_vector() {
+  Vector *vec = malloc(sizeof(Vector));
+  vec->data = malloc(sizeof(void *) * 16);
+  vec->capacity = 16;
+  vec->len = 0;
+  return vec;
+}
+
+void vec_push(Vector *vec, void *elem) {
+  if (vec->capacity == vec->len) {
+    vec->capacity *= 2;
+    vec->data = realloc(vec->data, sizeof(void *) * vec->capacity);
+  }
+  vec->data[vec->len++] = elem;
 }
 
 int consume(int ty) {
@@ -173,6 +199,10 @@ int main(int argc, char **argv) {
     fprintf(stderr, "引数の個数が正しくありません\n");
     return 1;
   }
+  if (argc == 2 && !strncmp(argv[1], "-test", 5)) {
+    runtest();
+    return 0;
+  }
 
   tokenize(argv[1]);
   Node *node = add();
@@ -187,4 +217,27 @@ int main(int argc, char **argv) {
   printf("  pop rax\n");
   printf("  ret\n");
   return 0;
+}
+
+int expect(int line, int expected, int actual) {
+  if (expected == actual)
+    return;
+  fprintf(stderr, "%d: %d expected, but got %d\n", line, expected, actual);
+  exit(1);
+}
+
+void runtest() {
+  Vector *vec =   new_vector();
+  expect(__LINE__, 0, vec->len);
+
+  int i;
+  for (i = 0; i < 100; i++)
+    vec_push(vec, (void *)i);
+
+  expect(__LINE__, 100, vec->len);
+  expect(__LINE__, 0  , (int)vec->data[0]);
+  expect(__LINE__, 50 , (int)vec->data[50]);
+  expect(__LINE__, 99 , (int)vec->data[99]);
+
+  printf("OK\n");
 }
